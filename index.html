@@ -21,7 +21,7 @@
       max-width:100%;
       overflow-x:hidden;
     }
-
+    
     body{
       margin:0;
       background:var(--bg);
@@ -152,27 +152,25 @@
     }
   </style>
 
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
   <script>
     /***********************
      只需要修改下面這一區
     ***********************/
     const STORE_CONFIG = {
       storeName: "OO寵物",
-      gasUrl: "請貼上 GAS Web App 網址",
+      gasUrl: "你部署的GAS網址",
       sharedSecret: "自訂密碼",
+      liffId: "填寫LIFF_ID",
 
-//改成你配合的動物醫院
-
-      vetName: "OO動物醫院", 
+      vetName: "OO動物醫院",
       vetPhone: "0212345678",
       vetAddress: "OO市OO區OO路OO號",
 
-//這邊不用改
       pageTitle: "基本資料表",
       pageHint: "請於住宿前填寫完成本資料表！",
-     
       emergencyConsentText: "住宿期間若寵物有就醫需求，本人同意由OO寵物帶往OO動物醫院就診。",
-
       emailNoticeText: "送出後將自動寄送副本至店家與您填寫的Email。"
     };
   </script>
@@ -192,6 +190,10 @@
           <input id="owner_name" placeholder="例：陳小美" required />
         </div>
         <div>
+          <label>身分證字號</label>
+          <input id="owner_id_no" placeholder="例：A123456789" />
+        </div>
+        <div>
           <label>手機號碼</label>
           <input id="owner_phone" inputmode="tel" placeholder="09xxxxxxxx" required />
         </div>
@@ -201,7 +203,7 @@
         </div>
         <div>
           <label>現居地址</label>
-          <input id="owner_address" placeholder="縣市／區／路／號（可留空）" />
+          <input id="owner_address" placeholder="縣市／區／路／號" required />
         </div>
       </div>
 
@@ -243,14 +245,14 @@
         </div>
 
         <div>
-          <label>毛色</label>
-          <input id="pet_color" placeholder="例：白色／奶油色／黑白..." />
+          <label>年齡</label>
+          <input id="pet_age" inputmode="numeric" pattern="[0-9]*" placeholder="例：3" />
         </div>
 
         <div>
-          <label>出生日期</label>
+          <label>基礎疫苗施打時間</label>
           <input
-            id="pet_birth_date"
+            id="pet_vaccine_date"
             inputmode="numeric"
             pattern="[0-9]*"
             maxlength="10"
@@ -265,6 +267,15 @@
             <option value="">請選擇</option>
             <option>已絕育</option>
             <option>未絕育</option>
+          </select>
+        </div>
+
+        <div>
+          <label>是否抬腿</label>
+          <select id="pet_leg_lift">
+            <option value="">請選擇</option>
+            <option>會</option>
+            <option>不會</option>
           </select>
         </div>
 
@@ -298,7 +309,7 @@
       <div class="grid">
         <div>
           <label>晶片號碼</label>
-          <input id="pet_chip" placeholder="例：900xxxxxxx（可留空）" />
+          <input id="pet_chip" inputmode="numeric" pattern="[0-9]*" placeholder="例：900xxxxxxx" />
         </div>
         <div>
           <label>狂犬疫苗注射時間</label>
@@ -414,6 +425,12 @@
 
 <script>
   const CFG = STORE_CONFIG;
+  let LIFF_PROFILE = {
+    userId: "",
+    displayName: "",
+    pictureUrl: "",
+    statusMessage: ""
+  };
 
   document.title = `${CFG.storeName}｜${CFG.pageTitle}`;
   document.getElementById("brandText").textContent = CFG.storeName;
@@ -526,26 +543,48 @@
     return `${y}/${m}/${dd}`;
   }
 
-  const dewormDateInput = document.getElementById("pet_deworm_date");
-  if (dewormDateInput) {
-    dewormDateInput.addEventListener("input", (e) => {
-      e.target.value = formatDateSlash(e.target.value);
-    });
+  ["pet_deworm_date", "pet_vaccine_date", "pet_rabies"].forEach((id)=>{
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener("input", (e) => {
+        e.target.value = formatDateSlash(e.target.value);
+      });
+    }
+  });
+
+  async function initLiffProfile(){
+    try{
+      if(!CFG.liffId || CFG.liffId === "請填入你的LIFF_ID" || CFG.liffId === "填寫LIFF_ID"){
+        console.warn("尚未設定 LIFF ID");
+        return;
+      }
+
+      if(typeof liff === "undefined"){
+        console.warn("LIFF SDK 載入失敗");
+        return;
+      }
+
+      await liff.init({ liffId: CFG.liffId });
+
+      if(!liff.isLoggedIn()){
+        liff.login({ redirectUri: location.href });
+        return;
+      }
+
+      const profile = await liff.getProfile();
+      LIFF_PROFILE = {
+        userId: profile.userId || "",
+        displayName: profile.displayName || "",
+        pictureUrl: profile.pictureUrl || "",
+        statusMessage: profile.statusMessage || ""
+      };
+
+    }catch(err){
+      console.error("LIFF 初始化失敗：", err);
+    }
   }
 
-  const birthInput = document.getElementById("pet_birth_date");
-  if (birthInput) {
-    birthInput.addEventListener("input", (e) => {
-      e.target.value = formatDateSlash(e.target.value);
-    });
-  }
-
-  const rabiesInput = document.getElementById("pet_rabies");
-  if (rabiesInput) {
-    rabiesInput.addEventListener("input", (e) => {
-      e.target.value = formatDateSlash(e.target.value);
-    });
-  }
+  window.addEventListener("load", initLiffProfile);
 
   document.getElementById('submitBtn').addEventListener('click', async ()=>{
     try{
@@ -559,9 +598,10 @@
         ["pet_name","請填寵物名字"],
         ["pet_sex","請選擇性別"],
         ["pet_breed","請填品種"],
-        ["pet_color","請填毛色"],
-        ["pet_birth_date","請填出生日期"],
+        ["pet_age","請填年齡"],
+        ["pet_vaccine_date","請填基礎疫苗施打時間"],
         ["pet_neutered","請選擇是否已絕育"],
+        ["pet_leg_lift","請選擇是否抬腿"],
         ["pet_deworm_date","請填體外驅蟲時間"],
         ["pet_deworm_way","請選擇體外驅蟲方式"],
         ["pet_chip","請填晶片號碼"],
@@ -579,7 +619,7 @@
         return;
       }
 
-      if(!GAS_URL || GAS_URL.includes("請貼上 GAS Web App 網址")){
+      if(!GAS_URL || GAS_URL.includes("請貼上 GAS Web App 網址") || GAS_URL.includes("你部署的GAS網址")){
         setStatus("請先設定 GAS_URL");
         return;
       }
@@ -588,8 +628,10 @@
 
       const payload = {
         action: "submitHotelIntake",
+        secret: CFG.sharedSecret,
         data: {
           owner_name: val("owner_name"),
+          owner_id_no: val("owner_id_no"),
           owner_phone: val("owner_phone"),
           owner_email: val("owner_email"),
           owner_address: val("owner_address"),
@@ -599,9 +641,10 @@
           pet_name: val("pet_name"),
           pet_sex: val("pet_sex"),
           pet_breed: val("pet_breed"),
-          pet_color: val("pet_color"),
-          pet_birth_date: val("pet_birth_date"),
+          pet_age: val("pet_age"),
+          pet_vaccine_date: val("pet_vaccine_date"),
           pet_neutered: val("pet_neutered"),
+          pet_leg_lift: val("pet_leg_lift"),
 
           pet_deworm_date: val("pet_deworm_date"),
           pet_deworm_way: val("pet_deworm_way"),
@@ -625,6 +668,12 @@
 
           signed_date: val("signed_date"),
           signature_png: canvas.toDataURL("image/png"),
+
+          line_user_id: LIFF_PROFILE.userId || "",
+          line_display_name: LIFF_PROFILE.displayName || "",
+          line_picture_url: LIFF_PROFILE.pictureUrl || "",
+          line_status_message: LIFF_PROFILE.statusMessage || "",
+
           ua: navigator.userAgent,
           created_at: new Date().toISOString()
         }
