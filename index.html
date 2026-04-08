@@ -300,30 +300,47 @@
     #cardActivity .recordTable td:nth-child(2){ width:56%; }
   }
 
+  #cardPersonality .cardBody{
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+#cardPersonality .opts{
+  display:grid !important;
+  grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+  column-gap:24px !important;
+  row-gap:18px !important;
+  align-items:center !important;
+  margin-bottom:14px !important;
+}
+
+#cardPersonality .opts:last-child{
+  margin-bottom:0 !important;
+}
+
+#cardPersonality .opt{
+  display:flex !important;
+  align-items:center !important;
+  gap:10px !important;
+  margin:0 !important;
+  line-height:1.6 !important;
+  min-height:28px !important;
+}
+
+#cardPersonality .opt input[type="checkbox"]{
+  width:18px !important;
+  height:18px !important;
+  margin:0 !important;
+  flex:0 0 auto !important;
+}
+
+@media (max-width:640px){
   #cardPersonality .opts{
-    display:flex !important;
-    flex-wrap:wrap !important;
-    gap:10px 18px !important;
-    align-content:flex-start !important;
-    height:auto !important;
-    min-height:0 !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    column-gap:18px !important;
+    row-gap:14px !important;
   }
-
-  #cardPersonality .opt{
-    margin:0 !important;
-    line-height:1.35 !important;
-  }
-
-  #cardPersonality .opt input[type="checkbox"]{
-    width:20px !important;
-    height:20px !important;
-    margin:0 !important;
-  }
-
-  #cardActivity .leftCol{
-    display:flex;
-    align-items:flex-start;
-  }
+}
   </style>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
